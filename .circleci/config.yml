@@ -1,0 +1,90 @@
+version: 2
+jobs:
+  test-bot:
+    macos:
+      xcode: "9.0"
+    environment:
+      CIRCLE_REPOSITORY_URL: https://github.com/randy3k/homebrew-hello-world
+      HOMEBREW_DEVELOPER: 1
+      HOMEBREW_NO_AUTO_UPDATE: 1
+    steps:
+      - run: |
+          brew update
+          cd $(brew --repo)
+          git fetch origin --tags
+          git reset --hard origin/master
+          git config --global user.name randy3k
+          git config --global user.email randy.cs.lai@gmail.com
+      - checkout
+      - run: |
+          git remote set-url origin $CIRCLE_REPOSITORY_URL
+          git fetch origin
+          git reset --hard origin/master
+          TAP_PATH=$(brew --repo $CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME)
+          mkdir -p $TAP_PATH
+          cp -a ./ $TAP_PATH/
+      - run:
+          no_output_timeout: 60m
+          command: |
+            mkdir /tmp/bottles
+            cd /tmp/bottles
+            brew test-bot --skip-setup
+
+  bottle:
+    macos:
+      xcode: "9.0"
+    steps:
+      - run: |
+          brew update
+          git config --global user.name randy3k
+          git config --global user.email randy.cs.lai@gmail.com
+      - checkout
+      - run:
+          no_output_timeout: 60m
+          command: |
+            TAP_PATH=$(brew --repo $CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME)
+            mkdir -p $TAP_PATH
+            cp -a ./ $TAP_PATH/
+            brew tap --repair
+            FORMULA=$(echo "$CIRCLE_TAG" | sed -nE 's/(^[a-z\-]*)-[0-9\._]*$/\1/p')
+            brew install --build-from-source --build-bottle $FORMULA
+            mkdir -p /tmp/bottles
+            cd /tmp/bottles
+            BOTTLE_ROOT_URL=https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME/releases/download/${FORMULA}-bottle
+            brew bottle --json --root-url=$BOTTLE_ROOT_URL $FORMULA
+      - run: |
+            # modify merge message platform tag
+            cd /tmp/bottles
+            sed -i '' 's/"sierra"/"sierra_or_later"/g' *.sierra.*.json
+      - run: |
+            # upload bottles to github releases
+            brew install tcnksm/ghr/ghr
+            FORMULA=$(echo "$CIRCLE_TAG" | sed -nE 's/(^[a-z\-]*)-[0-9\._]*$/\1/p')
+            ghr --username $CIRCLE_PROJECT_USERNAME -r $CIRCLE_PROJECT_REPONAME --token $GITHUB_TOKEN --replace "${FORMULA}-bottle" /tmp/bottles
+      - run: |
+            # create pull request
+            brew install hub
+            TAP_PATH=$(brew --repo $CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME)
+            cd $TAP_PATH
+            git reset --hard origin/master
+            brew bottle --merge --write /tmp/bottles/*.json
+            git checkout -b "$CIRCLE_TAG#bottle"
+            git remote set-url origin https://$CIRCLE_PROJECT_USERNAME:$GITHUB_TOKEN@github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME
+            git push --set-upstream --force origin "$CIRCLE_TAG#bottle"
+            hub pull-request -m "$(git log -1 --pretty=%B)"
+
+workflows:
+  version: 2
+  build:
+    jobs:
+      - test-bot:
+          filters:
+            branches:
+              ignore: /master|.*#bottle/
+
+      - bottle:
+          filters:
+            tags:
+              only: /.*/
+            branches:
+              ignore: /.*/
