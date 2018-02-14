@@ -62,9 +62,6 @@ jobs:
     macos:
       xcode: "9.0"
     steps:
-      - run: |
-          git config --global user.name randy3k
-          git config --global user.email randy.cs.lai@gmail.com
       - checkout
       - run:
           no_output_timeout: 60m
@@ -92,9 +89,6 @@ jobs:
     docker:
       - image: linuxbrew/linuxbrew
     steps:
-      - run: |
-          git config --global user.name randy3k
-          git config --global user.email randy.cs.lai@gmail.com
       - checkout
       - run:
           no_output_timeout: 60m
@@ -121,6 +115,10 @@ jobs:
     steps:
       - attach_workspace:
           at: /tmp/workspace
+      - checkout
+      - run: |
+          git config --global user.name randy3k
+          git config --global user.email randy.cs.lai@gmail.com
       - run: |
           # upload bottles to github releases
           brew install unzip
@@ -130,9 +128,12 @@ jobs:
           FORMULA=$(echo "$CIRCLE_TAG" | sed -nE 's/(^[a-z\-]*)-[0-9\._]*$/\1/p')
           ~/.local/bin/ghr --username $CIRCLE_PROJECT_USERNAME -r $CIRCLE_PROJECT_REPONAME --token $GITHUB_TOKEN --replace "${FORMULA}-bottle" /tmp/workspace/bottles
       - run: |
-          # create pull request
           brew install hub
           TAP_PATH=$(brew --repo $CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME)
+          mkdir -p $TAP_PATH
+          cp -a ./ $TAP_PATH/
+          brew tap --repair
+          # create pull request
           cd $TAP_PATH
           git reset --hard origin/master
           brew bottle --merge --write /tmp/workspace/bottles/*.json
