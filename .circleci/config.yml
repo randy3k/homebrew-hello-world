@@ -9,7 +9,6 @@ jobs:
       HOMEBREW_NO_AUTO_UPDATE: 1
     steps:
       - run: |
-          brew update
           cd $(brew --repo)
           git fetch origin --tags
           git reset --hard origin/master
@@ -39,7 +38,6 @@ jobs:
       HOMEBREW_NO_AUTO_UPDATE: 1
     steps:
       - run: |
-          brew update
           cd $(brew --repo)
           git fetch origin --tags
           git reset --hard origin/master
@@ -65,7 +63,6 @@ jobs:
       xcode: "9.0"
     steps:
       - run: |
-          brew update
           git config --global user.name randy3k
           git config --global user.email randy.cs.lai@gmail.com
       - checkout
@@ -96,7 +93,6 @@ jobs:
       - image: linuxbrew/linuxbrew
     steps:
       - run: |
-          brew update
           git config --global user.name randy3k
           git config --global user.email randy.cs.lai@gmail.com
       - checkout
@@ -129,6 +125,7 @@ jobs:
           # upload bottles to github releases
           brew install unzip
           curl -L https://github.com/tcnksm/ghr/releases/download/v0.5.4/ghr_v0.5.4_linux_amd64.zip -o /tmp/ghr.zip
+          mkdir -p ~/.local/bin/
           unzip /tmp/ghr.zip  -d ~/.local/bin/
           FORMULA=$(echo "$CIRCLE_TAG" | sed -nE 's/(^[a-z\-]*)-[0-9\._]*$/\1/p')
           ~/.local/bin/ghr --username $CIRCLE_PROJECT_USERNAME -r $CIRCLE_PROJECT_REPONAME --token $GITHUB_TOKEN --replace "${FORMULA}-bottle" /tmp/workspace/bottles
