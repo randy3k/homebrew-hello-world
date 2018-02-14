@@ -127,6 +127,7 @@ jobs:
           at: /tmp/workspace
       - run: |
           # upload bottles to github releases
+          brew install unzip
           curl -L https://github.com/tcnksm/ghr/releases/download/v0.5.4/ghr_v0.5.4_linux_amd64.zip -o /tmp/ghr.zip
           unzip /tmp/ghr.zip  -d ~/.local/bin/
           FORMULA=$(echo "$CIRCLE_TAG" | sed -nE 's/(^[a-z\-]*)-[0-9\._]*$/\1/p')
